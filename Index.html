@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nemotron 3 Ultra | 3D Carousel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0F172A;
+            --text: #F8FAFC;
+            --muted: #94A3B8;
+            --card-w: 1000px;
+            --perspective: 1400px;
+            --transition: 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        .scene { perspective: var(--perspective); perspective-origin: center top; width: 100%; max-width: var(--card-w); }
+        .carousel-wrapper { display: flex; flex-direction: column; gap: 28px; transform-style: preserve-3d; transform: rotateX(-2deg); }
+        .header-card {
+            text-align: center; padding: 30px 20px 10px; background: transparent;
+            opacity: 0; transform: translateY(40px) rotateX(8deg);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .header-card.visible { opacity: 1; transform: translateY(0) rotateX(0); }
+        .badge {
+            display: inline-block; background: linear-gradient(90deg, #22D3EE, #A855F7);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px;
+        }
+        .header-card h1 {
+            font-size: 52px; font-weight: 800; line-height: 1.1;
+            background: linear-gradient(135deg, #fff, #94A3B8);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .header-card p { color: var(--muted); font-size: 20px; margin-top: 6px; font-weight: 400; }
+        .divider { width: 100px; height: 4px; background: linear-gradient(90deg, #22D3EE, #A855F7); margin: 16px auto 0; border-radius: 2px; }
+        .carousel-viewport {
+            position: relative; overflow: hidden; border-radius: 24px;
+            box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
+            transform-style: preserve-3d;
+            touch-action: pan-y;
+        }
+        .carousel-track { display: flex; transition: transform var(--transition); will-change: transform; transform-style: preserve-3d; }
+        .feature-card {
+            flex: 0 0 100%; min-height: 280px; padding: 40px 52px; display: flex; gap: 32px;
+            align-items: center; border-radius: 0; background: var(--grad);
+            transform-style: preserve-3d; transition: box-shadow 0.4s ease; position: relative;
+        }
+        .feature-card::before, .feature-card::after {
+            content: ''; position: absolute; inset: 0; border-radius: 0; background: inherit;
+            filter: brightness(0.55); transform: translateZ(-12px); z-index: -1; opacity: 0.7;
+        }
+        .feature-card::after { transform: translateZ(-26px); filter: brightness(0.35); opacity: 0.4; }
+        .feature-card.active-slide:hover {
+            transform: translateY(-8px) rotateX(-3deg) rotateY(2deg) scale(1.01) !important;
+            box-shadow: 0 40px 80px -30px rgba(6, 182, 212, 0.25),
+                        0 0 0 1px rgba(255,255,255,0.08),
+                        0 0 60px -10px rgba(6,182,212,0.12);
+            z-index: 10;
+        }
+        .feature-card.active-slide:hover::before { transform: translateZ(-16px); }
+        .feature-card.active-slide:hover::after { transform: translateZ(-32px); }
+        .feature-card .icon {
+            flex-shrink: 0; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.1); border-radius: 16px; backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.08); transform: translateZ(18px); transition: transform 0.3s ease;
+        }
+        .feature-card.active-slide:hover .icon { transform: translateZ(30px) scale(1.08); }
+        .feature-card .icon svg { width: 28px; height: 28px; stroke: #fff; fill: none; stroke-width: 2; }
+        .feature-card .content { flex: 1; }
+        .feature-card .content h2 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.3px; }
+        .feature-card .content p { color: rgba(255,255,255,0.7); font-size: 16px; line-height: 1.5; margin-bottom: 18px; }
+        .metrics { display: flex; gap: 12px; flex-wrap: wrap; }
+        .metric {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.07);
+            padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 600;
+            backdrop-filter: blur(4px); transition: background 0.25s;
+        }
+        .feature-card.active-slide:hover .metric { background: rgba(255,255,255,0.2); }
+        .carousel-controls { display: flex; justify-content: center; align-items: center; gap: 24px; padding: 6px 0 4px; }
+        .btn-arrow {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #fff;
+            width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: background 0.25s, transform 0.25s, border-color 0.25s;
+            font-size: 22px; user-select: none; backdrop-filter: blur(6px);
+        }
+        .btn-arrow:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.2); transform: scale(1.05); }
+        .btn-arrow:active { transform: scale(0.94); }
+        .btn-arrow svg { width: 24px; height: 24px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        .dots { display: flex; gap: 10px; }
+        .dot {
+            width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18);
+            border: none; cursor: pointer; transition: background 0.3s, transform 0.3s, width 0.3s; padding: 0;
+        }
+        .dot.active { background: #22D3EE; width: 28px; border-radius: 6px; box-shadow: 0 0 14px rgba(34,211,238,0.35); }
+        .dot:hover { background: rgba(255,255,255,0.35); }
+        .dot.active:hover { background: #22D3EE; }
+        .auto-toggle {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); color: var(--muted);
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; transition: background 0.25s, color 0.25s, border-color 0.25s;
+            font-size: 18px; backdrop-filter: blur(4px);
+        }
+        .auto-toggle:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.15); }
+        .auto-toggle.active { color: #22D3EE; border-color: rgba(34,211,238,0.25); }
+        .footer-card {
+            text-align: center; padding: 16px 20px 6px; background: transparent;
+            opacity: 0; transform: translateY(30px) rotateX(6deg);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .footer-card.visible { opacity: 1; transform: translateY(0) rotateX(0); }
+        .footer-card p { color: var(--muted); font-size: 14px; }
+        .footer-card a { color: #22D3EE; text-decoration: none; font-weight: 500; }
+        .footer-card a:hover { text-decoration: underline; }
+        @media (max-width: 900px) {
+            .feature-card { flex-direction: column; align-items: stretch; padding: 32px; min-height: auto; }
+            .feature-card .icon { width: 56px; height: 56px; }
+            .header-card h1 { font-size: 38px; }
+            .header-card p { font-size: 17px; }
+            .carousel-viewport { border-radius: 18px; }
+        }
+        @media (max-width: 600px) {
+            .scene { perspective: 900px; }
+            .header-card h1 { font-size: 28px; }
+            .header-card p { font-size: 15px; }
+            .feature-card { padding: 24px 20px; gap: 18px; }
+            .feature-card .content h2 { font-size: 22px; }
+            .feature-card .content p { font-size: 14px; }
+            .metric { font-size: 12px; padding: 4px 12px; }
+            .btn-arrow { width: 40px; height: 40px; font-size: 18px; }
+            .btn-arrow svg { width: 20px; height: 20px; }
+            .dots { gap: 8px; }
+            .dot { width: 8px; height: 8px; }
+            .dot.active { width: 22px; }
+            .auto-toggle { width: 36px; height: 36px; font-size: 15px; }
+            .carousel-controls { gap: 14px; }
+        }
+        @media (max-width: 400px) {
+            .header-card h1 { font-size: 22px; }
+            .feature-card { padding: 18px 14px; }
+            .feature-card .content h2 { font-size: 19px; }
+            .carousel-controls { gap: 10px; flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="scene">
+        <div class="carousel-wrapper">
+            <header class="header-card" id="header">
+                <span class="badge">NVIDIA Research</span>
+                <h1>Nemotron 3 Ultra</h1>
+                <p>The New Standard for Enterprise AI Agents</p>
+                <div class="divider"></div>
+            </header>
+
+            <div class="carousel-viewport" id="viewport">
+                <div class="carousel-track" id="track">
+                    <article class="feature-card" data-index="0" style="--grad: linear-gradient(135deg, #06B6D4, #0891B2);">
+                        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M18.5 5.5l-7 7M5.5 5.5l7 7"/></svg></div>
+                        <div class="content"><h2>Hybrid Architecture</h2><p>Transformer + State-Space (Mamba) Blocks</p><div class="metrics"><span class="metric">⚡ 3× Faster Training</span><span class="metric">💾 40% Less VRAM</span></div></div>
+                    </article>
+                    <article class="feature-card" data-index="1" style="--grad: linear-gradient(135deg, #0E7490, #155E75);">
+                        <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+                        <div class="content"><h2>Native Multimodal</h2><p>Text · Vision · Audio · Code in Single Pass</p><div class="metrics"><span class="metric">🧠 Unified Weights</span><span class="metric">🔗 Cross-Modal Reasoning</span></div></div>
+                    </article>
+                    <article class="feature-card" data-index="2" style="--grad: linear-gradient(135deg, #164E63, #0C2D3A);">
+                        <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg></div>
+                        <div class="content"><h2>Dynamic Routing (MoE)</h2><p>Sparse Activation • Task-Aware Expert Selection</p><div class="metrics"><span class="metric">🎯 Active Params Only</span><span class="metric">⚡ Sub-quadratic Scaling</span></div></div>
+                    </article>
+                    <article class="feature-card" data-index="3" style="--grad: linear-gradient(135deg, #164E63, #0C2D3A);">
+                        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                        <div class="content"><h2>Privacy-by-Design</h2><p>On-Device LoRA • Federated Learning Ready</p><div class="metrics"><span class="metric">🛡️ Zero Data Egress</span><span class="metric">📜 GDPR / HIPAA Ready</span></div></div>
+                    </article>
+                    <article class="feature-card" data-index="4" style="--grad: linear-gradient(135deg, #0E7490, #155E75);">
+                        <div class="icon"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+                        <div class="content"><h2>Real-Time Tool Use</h2><p>Python REPL · Search · APIs · Plotting · RAG</p><div class="metrics"><span class="metric">🐍 Native Python Env</span><span class="metric">🔌 0-Config Plugins</span></div></div>
+                    </article>
+                    <article class="feature-card" data-index="5" style="--grad: linear-gradient(135deg, #06B6D4, #0891B2);">
+                        <div class="icon"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+                        <div class="content"><h2>Edge-to-Cloud Deploy</h2><p>One Command · Identical Weights · Jetson to DGX</p><div class="metrics"><span class="metric">☁️ DGX Cloud / NGC</span><span class="metric">🤖 Jetson Orin Optimized</span></div></div>
+                    </article>
+                </div>
+            </div>
+
+            <div class="carousel-controls">
+                <button class="btn-arrow" id="prevBtn" aria-label="Previous slide"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div class="dots" id="dotsContainer"></div>
+                <button class="btn-arrow" id="nextBtn" aria-label="Next slide"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+                <button class="auto-toggle active" id="autoToggle" aria-label="Toggle autoplay"><span id="autoIcon">⏸</span></button>
+            </div>
+
+            <footer class="footer-card" id="footer">
+                <p>Built on NVIDIA NeMo • Apache 2.0 • <a href="https://huggingface.co/nvidia" target="_blank" rel="noopener">Hugging Face</a> / <a href="https://ngc.nvidia.com" target="_blank" rel="noopener">NGC</a></p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        const track = document.getElementById('track');
+        const viewport = document.getElementById('viewport');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const dotsContainer = document.getElementById('dotsContainer');
+        const autoToggle = document.getElementById('autoToggle');
+        const autoIcon = document.getElementById('autoIcon');
+        const cards = track.querySelectorAll('.feature-card');
+        const total = cards.length;
+
+        let currentIndex = 0;
+        let isTransitioning = false;
+        let autoPlayInterval = null;
+        const AUTO_INTERVAL = 4000;
+
+        dotsContainer.innerHTML = '';
+        for (let i = 0; i < total; i++) {
+            const dot = document.createElement('button');
+            dot.className = 'dot' + (i === 0 ? ' active' : '');
+            dot.dataset.index = i;
+            dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+            dotsContainer.appendChild(dot);
+        }
+        const dots = dotsContainer.querySelectorAll('.dot');
+
+        function updateUI() {
+            dots.forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
+            cards.forEach((card, i) => card.classList.toggle('active-slide', i === currentIndex));
+        }
+
+        function goTo(index, animate = true) {
+            if (isTransitioning) return;
+            index = (index + total) % total;
+            if (index === currentIndex) return;
+
+            isTransitioning = true;
+            currentIndex = index;
+            track.style.transition = animate ? 'transform var(--transition)' : 'none';
+            track.style.transform = 'translateX(' + (-currentIndex * 100) + '%)';
+            updateUI();
+
+            setTimeout(() => { isTransitioning = false; }, animate ? 600 : 0);
+        }
+
+        function next() { goTo(currentIndex + 1); }
+        function prev() { goTo(currentIndex - 1); }
+
+        function startAutoplay() {
+            if (autoPlayInterval) return;
+            autoPlayInterval = setInterval(next, AUTO_INTERVAL);
+            autoToggle.classList.add('active');
+            autoIcon.textContent = '⏸';
+        }
+
+        function stopAutoplay() {
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+            }
+            autoToggle.classList.remove('active');
+            autoIcon.textContent = '▶';
+        }
+
+        function toggleAutoplay() {
+            autoPlayInterval ? stopAutoplay() : startAutoplay();
+        }
+
+        nextBtn.addEventListener('click', () => { stopAutoplay(); next(); });
+        prevBtn.addEventListener('click', () => { stopAutoplay(); prev(); });
+
+        dots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                const idx = Number(dot.dataset.index);
+                if (idx !== currentIndex) {
+                    stopAutoplay();
+                    goTo(idx);
+                }
+            });
+        });
+
+        autoToggle.addEventListener('click', toggleAutoplay);
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight') { stopAutoplay(); next(); e.preventDefault(); }
+            if (e.key === 'ArrowLeft') { stopAutoplay(); prev(); e.preventDefault(); }
+            if (e.key === ' ') { toggleAutoplay(); e.preventDefault(); }
+        });
+
+        let touchStartX = 0, touchStartY = 0, isSwiping = false;
+
+        viewport.addEventListener('touchstart', e => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isSwiping = true;
+        }, { passive: true });
+
+        viewport.addEventListener('touchmove', e => {
+            if (!isSwiping) return;
+            const touch = e.touches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) e.preventDefault();
+        }, { passive: false });
+
+        viewport.addEventListener('touchend', e => {
+            if (!isSwiping) return;
+            isSwiping = false;
+            const touch = e.changedTouches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                stopAutoplay();
+                dx > 0 ? prev() : next();
+            }
+        }, { passive: true });
+
+        let wasAutoplayingBeforeHover = false;
+
+        viewport.addEventListener('mouseenter', () => {
+            wasAutoplayingBeforeHover = !!autoPlayInterval;
+            if (wasAutoplayingBeforeHover) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+            }
+        });
+
+        viewport.addEventListener('mouseleave', () => {
+            if (wasAutoplayingBeforeHover && autoToggle.classList.contains('active')) {
+                startAutoplay();
+            }
+            wasAutoplayingBeforeHover = false;
+        });
+
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
+
+        document.querySelectorAll('.header-card, .footer-card').forEach(el => observer.observe(el));
+
+        track.style.transition = 'none';
+        track.style.transform = 'translateX(0%)';
+        updateUI();
+        void track.offsetHeight;
+        track.style.transition = 'transform var(--transition)';
+
+        document.querySelectorAll('.header-card, .footer-card').forEach(el => {
+            if (el.getBoundingClientRect().top < window.innerHeight) el.classList.add('visible');
+        });
+
+        setTimeout(startAutoplay, 800);
+
+        window.__carousel = { goTo, next, prev, startAutoplay, stopAutoplay, toggleAutoplay };
+    })();
+    </script>
+</body>
+</html>
